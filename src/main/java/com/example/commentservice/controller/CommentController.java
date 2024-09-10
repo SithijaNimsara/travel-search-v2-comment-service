@@ -18,34 +18,21 @@ import static javax.servlet.http.HttpServletResponse.*;
 
 
 @RestController
+@RequestMapping("/comment")
 public class CommentController {
 
     @Autowired
     private CommentService commentService;
 
-    @GetMapping(value = "/get-comment/{postId}")
-    // @PreAuthorize("hasRole('USER') or hasRole('BUSINESS')")
+    @GetMapping()
     @PreAuthorize("hasRole('USER')")
-    @ApiOperation(value = "Get all post by it's ID", nickname = "getAllPostByIdOperation")
-    @ApiResponses({
-            @ApiResponse(code = SC_BAD_REQUEST, message = "Bad request", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_UNAUTHORIZED, message = "Unauthorized", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_NOT_FOUND, message = "Unauthorized", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_INTERNAL_SERVER_ERROR, message = "Internal server error", response = HttpExceptionResponse.class)})
-    public ResponseEntity<List<CommentInforDto>> getAllCommentByPostId(
-            @ApiParam(value = "Get comment by post ID.", required = true) @PathVariable("postId") int postId) {
+    public ResponseEntity<List<CommentInforDto>> getAllCommentByPostId(@RequestParam(value = "postId", required = true) int postId) {
         return commentService.getCommentByPostId(postId);
     }
 
-    @PostMapping(value = "/sent-comment")
+    @PostMapping()
     @PreAuthorize("hasRole('USER')")
-    @ApiOperation(value = "Send comment by it's user ID", nickname = "sendCommentOperation")
-    @ApiResponses({
-            @ApiResponse(code = SC_BAD_REQUEST, message = "Bad request", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_UNAUTHORIZED, message = "Unauthorized", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_NOT_FOUND, message = "Unauthorized", response = HttpExceptionResponse.class),
-            @ApiResponse(code = SC_INTERNAL_SERVER_ERROR, message = "Internal server error", response = HttpExceptionResponse.class)})
-    public ResponseEntity<Comment> sendCommentByUserId(@ApiParam(value = "User credentials") @RequestBody SendCommentDto sendCommentDto,
+    public ResponseEntity<Comment> sendCommentByUserId(@RequestBody SendCommentDto sendCommentDto,
                                                        HttpServletRequest request) {
         return commentService.sendComment(sendCommentDto, request);
     }

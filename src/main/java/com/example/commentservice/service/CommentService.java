@@ -10,12 +10,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 import com.example.commentservice.dto.CommentInforDto;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -38,19 +40,27 @@ public class CommentService {
 
 
     public ResponseEntity<List<CommentInforDto>> getCommentByPostId(int postId) {
-        List<Comment> comment = commentRepository.findByPostId(postId);
+        try {
+            List<Comment> comment = commentRepository.findByPostId(postId);
 
-        List<CommentInforDto> commentInforDtoList = comment.stream().map(element -> {
-            CommentInforDto commentInforDto = CommentInforDto.builder()
-                    .commentId(element.getCommentId())
-                    .userName(element.getUserId().getName())
-                    .comment(element.getComment())
-                    .time(element.getTime())
-                    .userImage(element.getUserId().getImage())
-                    .build();
-            return commentInforDto;
-        }).collect(Collectors.toList());
-        return new ResponseEntity<>(commentInforDtoList, HttpStatus.OK);
+            if(comment.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            List<CommentInforDto> commentInforDtoList = comment.stream().map(element -> {
+                CommentInforDto commentInforDto = CommentInforDto.builder()
+                        .commentId(element.getCommentId())
+                        .userName(element.getUserId().getName())
+                        .comment(element.getComment())
+                        .time(element.getTime())
+                        .userImage(element.getUserId().getImage())
+                        .build();
+                return commentInforDto;
+            }).collect(Collectors.toList());
+            return new ResponseEntity<>(commentInforDtoList, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     public ResponseEntity<Comment> sendComment(SendCommentDto sendCommentDto, HttpServletRequest request) {
@@ -61,29 +71,52 @@ public class CommentService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         String userUrl = UriComponentsBuilder.fromHttpUrl(userServiceBaseUrl)
-                .pathSegment("get-userById", String.valueOf(sendCommentDto.getUserId()))
+                .pathSegment("user")
+                .queryParam("postId", String.valueOf(sendCommentDto.getUserId()))
                 .toUriString();
+        User user;
+        try {
+            ResponseEntity<User> userResponse = restTemplate.exchange(userUrl, HttpMethod.GET, entity, User.class);
+            logger.info("User Response received: {}", userResponse);
+            user = userResponse.getBody();
 
-        ResponseEntity<User> userResponse = restTemplate.exchange(userUrl, HttpMethod.GET, entity, User.class);
-        User user = userResponse.getBody();
-        logger.info("User Response received: {}", user);
-
+        } catch (HttpClientErrorException e) {
+            logger.error("User ID not found: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception ex) {
+            logger.error("Exception User Response- {}", ex.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
         String postUrl = UriComponentsBuilder.fromHttpUrl(postServiceBaseUrl)
-                .pathSegment("get-postById", String.valueOf(sendCommentDto.getPostId()))
+                .pathSegment("post")
+                .queryParam("postId", String.valueOf(sendCommentDto.getPostId()))
                 .toUriString();
+        Post post;
+        try {
+            ResponseEntity<Post> postResponse = restTemplate.exchange(postUrl, HttpMethod.GET, entity, Post.class);
+            logger.info("Post Response received: {}", postResponse);
+            post = postResponse.getBody();
+        } catch (HttpClientErrorException e) {
+            logger.error("Post ID not found: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception ex) {
+            logger.error("Exception Post Response- {}", ex.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 
-        ResponseEntity<Post> postResponse = restTemplate.exchange(postUrl, HttpMethod.GET, entity, Post.class);
-        Post post = postResponse.getBody();
-        logger.info("Post Response received: {}", post);
-
-        Comment comment = Comment.builder()
-                .comment(sendCommentDto.getComment())
-                .postId(post)
-                .userId(user)
-                .build();
-        commentRepository.save(comment);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+        try {
+            Comment comment = Comment.builder()
+                    .comment(sendCommentDto.getComment())
+                    .postId(post)
+                    .userId(user)
+                    .build();
+            commentRepository.save(comment);
+            logger.info("Comment saved successfully");
+            return new ResponseEntity<>(HttpStatus.CREATED);
+        } catch (Exception e) {
+            logger.error("Error while saving Comment: {}", e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-
 }
