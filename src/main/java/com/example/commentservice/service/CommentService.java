@@ -38,6 +38,7 @@ public class CommentService {
     @Value("${external.user-service.base-url}")
     private String userServiceBaseUrl;
 
+    private static final Logger logger = LoggerFactory.getLogger(CommentService.class);
 
     public ResponseEntity<List<CommentInforDto>> getCommentByPostId(int postId) {
         try {
@@ -64,7 +65,7 @@ public class CommentService {
     }
 
     public ResponseEntity<Comment> sendComment(SendCommentDto sendCommentDto, HttpServletRequest request) {
-        Logger logger = LoggerFactory.getLogger(CommentService.class);
+
         String headerAuth = request.getHeader("Authorization");
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", headerAuth);
@@ -74,6 +75,7 @@ public class CommentService {
                 .pathSegment("user")
                 .queryParam("postId", String.valueOf(sendCommentDto.getUserId()))
                 .toUriString();
+        logger.info("UserUrl: {}", userUrl);
         User user;
         try {
             ResponseEntity<User> userResponse = restTemplate.exchange(userUrl, HttpMethod.GET, entity, User.class);
