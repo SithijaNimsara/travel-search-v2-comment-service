@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: post-service
+  labels:
+    app: post-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: post-service
+  template:
+    metadata:
+      labels:
+        app: post-service
+    spec:
+      containers:
+        - name:  post-service
+          image: sithijan/travel-search-post-service:v3
+          ports:
+            - containerPort: 8081
+          imagePullPolicy: Always
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_CLOUD_CONSUL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_CLOUD_CONSUL_HOST
+            - name: SPRING_CLOUD_CONSUL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: SPRING_CLOUD_CONSUL_PORT
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SPRING_DATASOURCE_PASSWORD
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name:  post-service
+spec:
+  selector:
+    app:  post-service
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql-set:3306/travel"
+  SPRING_DATASOURCE_USERNAME: "root"
+  SPRING_CLOUD_CONSUL_HOST: "consul"
+  SPRING_CLOUD_CONSUL_PORT: "8500"

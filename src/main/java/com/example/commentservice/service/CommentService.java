@@ -32,10 +32,10 @@ public class CommentService {
     @Autowired
     RestTemplate restTemplate;
 
-    @Value("${external.post-service.base-url}")
+    @Value("${external.post-service.base-url:http://post-service:8081}")
     private String postServiceBaseUrl;
 
-    @Value("${external.user-service.base-url}")
+    @Value("${external.user-service.base-url:http://user-service:8082}")
     private String userServiceBaseUrl;
 
     private static final Logger logger = LoggerFactory.getLogger(CommentService.class);
@@ -71,6 +71,7 @@ public class CommentService {
         headers.set("Authorization", headerAuth);
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
+        logger.info("userServiceBaseUrl {}", userServiceBaseUrl);
         String userUrl = UriComponentsBuilder.fromHttpUrl(userServiceBaseUrl)
                 .pathSegment("user")
                 .queryParam("postId", String.valueOf(sendCommentDto.getUserId()))
@@ -90,6 +91,7 @@ public class CommentService {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
+        logger.info("PostServiceBaseUrl {}", postServiceBaseUrl);
         String postUrl = UriComponentsBuilder.fromHttpUrl(postServiceBaseUrl)
                 .pathSegment("post")
                 .queryParam("postId", String.valueOf(sendCommentDto.getPostId()))
